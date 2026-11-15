@@ -1,29 +1,14 @@
-# Etapa 5 - Escalabilidade e alertas
+# Etapa 5 — Agente e alertas
 
-## Objetivo
+Objetivo: diagnosticar CPU alta e propor aumento controlado de capacidade, usando APIs AWS locais e decisão de ferramentas pelo modelo.
 
-Especificar uma automação local para acompanhar a fila de relatórios agrícolas, alertar sobre aumento de demanda e propor ajustes de capacidade.
+1. ASG triagem-asg com limites 1 a 4. A capacidade existente é preservada ao repetir o provisionamento.
+2. Métrica CPUUtilization no namespace AWS/EC2 e dimensão AutoScalingGroupName=triagem-asg. Valores simulados; não são telemetria real da aplicação.
+3. Alarme cpu-triagem-alta: média em períodos de 60 s, três de três acima de 80%, ausência não violando; ação SNS para SQS alertas-triagem.
+4. Agente chama converse com toolConfig. O modelo seleciona ler_metricas, descrever_asg, listar_atividades e ajustar_capacidade; resultados retornam por toolResult. Limite de seis rodadas e oito ferramentas por resposta.
+5. Ajuste só fica autorizado após os resultados das três leituras em rodada anterior. Verificação determinística exige três pontos recentes e consecutivos, alvo atual+1, limite do grupo, justificativa e confirmação s/N da ação concreta. Condições são consultadas novamente após aprovação.
+6. Uma escrita por execução. Negativa, dados ausentes/antigos, pico isolado ou falha na auditoria impedem a alteração.
+7. Identidade IAM exclusiva triagem-agente. Escrita de capacidade restrita ao ARN obtido do ASG. Logs registram solicitação, resultado, aprovação e escrita. Credenciais ficam no perfil local.
+8. A entrada do agente é manual. SNS/SQS demonstra a entrega do alerta; não existe um processo consumindo a fila e iniciando automaticamente o agente.
 
-## Componentes e fluxo
-
-- Um Auto Scaling Group chamado `triagem-asg`, com capacidade mínima 1, desejada 1 e máxima 4 instâncias.
-- Uma métrica simulada do CloudWatch representa o tamanho da fila. Um alarme é acionado quando a métrica ultrapassa o limite configurado.
-- Ao alarmar, o CloudWatch publica uma notificação em um tópico SNS. O tópico entrega o alerta a uma fila SQS.
-- Um agente Python consulta as métricas, descreve o ASG, lista suas atividades recentes e propõe uma ação de escala com justificativa.
-
-## Aprovação humana
-
-O agente apenas recomenda a ação. Executar qualquer alteração de capacidade exige confirmação humana explícita; sem aprovação, nenhuma ação de escala é realizada.
-
-## Requisitos do ambiente
-
-Usar o perfil e as configurações locais do Floci. Não incluir credenciais nem `endpoint_url` fixos no código. A emulação do Floci pode ter limitações; implementar e testar os componentes localmente, sem pressupor comportamento idêntico ao da AWS real.
-
-## Critérios de evidência
-
-Registrar evidências locais de:
-
-1. Criação do ASG, configuração de métrica e alarme, tópico SNS e fila SQS.
-2. Envio de uma métrica simulada de tamanho da fila acima do limite.
-3. Acionamento do alarme e recebimento da mensagem de alerta na fila SQS.
-4. Execução do agente, consulta dos dados e simulação de uma decisão, mostrando que a escala só ocorre após aprovação humana explícita.
+Amostras publicadas no mesmo minuto são agregadas: aguarde uma janela nova antes de comparar pico com carga sustentada. Um pico isolado é testado de forma determinística no teste unitário, sem interferência de pontos antigos.

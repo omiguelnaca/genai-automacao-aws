@@ -1,0 +1,33 @@
+{
+  "premissas": {
+    "relatorios_mes": 15000,
+    "tokens_entrada_media": 143.0,
+    "tokens_saida_media": 38.666666666666664,
+    "modelo_preco": "DeepSeek v3.2 Standard, us-east-1",
+    "entrada_usd_milhao": 0.62,
+    "saida_usd_milhao": 1.85,
+    "lambda_memoria_gb": 0.125,
+    "lambda_ia_segundos_hipotese": 3,
+    "lambda_regras_segundos_hipotese": 0.1,
+    "gpu_usd_hora_referencia_historica": 0.526,
+    "gpu_horas_mes": 720
+  },
+  "inferencia_por_relatorio_usd": 0.00016019333333333334,
+  "inferencia_mes_usd": 2.4029000000000003,
+  "lambda_ia_mes_usd": 0.0967501875,
+  "lambda_regras_mes_usd": 0.00612500625,
+  "gpu_mes_usd": 378.72,
+  "equilibrio_gpu_relatorios_mes": 2364143.326813434,
+  "exclui": [
+    "S3",
+    "DynamoDB",
+    "logs",
+    "metricas",
+    "alarmes",
+    "SNS",
+    "SQS",
+    "EC2 de laboratorio",
+    "rede",
+    "impostos"
+  ]
+}

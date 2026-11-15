@@ -1,5 +1,8 @@
 import json
 import os
+import re
+import time
+import unicodedata
 from urllib.parse import unquote_plus
 
 import boto3
@@ -35,6 +38,11 @@ def _interpretar_resposta(texto: str) -> tuple[str, str, bool]:
     return resumo, urgencia, False
 
 
+def detectar_injecao(documento):
+    normal = ''.join(c for c in unicodedata.normalize('NFD', documento.lower()) if unicodedata.category(c) != 'Mn')
+    return bool(re.search(r'ignore.{0,80}instrucoes|marque.{0,40}urgencia|system\s*:|<\|.*?\|>', normal, re.S))
+
+
 def lambda_handler(event: dict, _context: object) -> dict:
     nome_tabela = os.environ["TABELA"]
     tabela = dynamodb.Table(nome_tabela)
@@ -54,6 +62,7 @@ def lambda_handler(event: dict, _context: object) -> dict:
         finally:
             corpo.close()
 
+        inicio = time.perf_counter()
         resposta = bedrock_runtime.converse(
             modelId=MODEL_ID,
             system=[
@@ -90,6 +99,10 @@ def lambda_handler(event: dict, _context: object) -> dict:
         )
         resumo, urgencia, revisao_humana = _interpretar_resposta(texto_resposta)
         uso = resposta["usage"]
+        injecao = detectar_injecao(documento)
+        if injecao:
+            # Quarentena conservadora: o LLM não pode rebaixar um relatório suspeito.
+            urgencia, revisao_humana = "alta", True
 
         item = {
             "arquivo": chave,
@@ -97,6 +110,8 @@ def lambda_handler(event: dict, _context: object) -> dict:
             "urgencia": urgencia,
             "tokens_in": uso["inputTokens"],
             "tokens_out": uso["outputTokens"],
+            "latencia_ms": int((time.perf_counter()-inicio)*1000),
+            "suspeita_injecao": injecao,
         }
         if revisao_humana:
             item["revisao_humana"] = True

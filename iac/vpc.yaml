@@ -102,6 +102,12 @@ Resources:
   WebInstance:
     Type: AWS::EC2::Instance
     Properties:
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          dnf install -y httpd
+          echo "Triagem agricola - laboratorio" > /var/www/html/index.html
+          systemctl enable --now httpd
       ImageId: !Ref AmiId
       InstanceType: t3.micro
       SubnetId: !Ref PublicSubnet

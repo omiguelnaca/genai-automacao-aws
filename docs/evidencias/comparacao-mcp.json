@@ -1,0 +1,95 @@
+{
+  "data_utc": "2026-11-15T17:51:38.179933+00:00",
+  "modelo_real": "llama3.2",
+  "model_id_proxy": "anthropic.claude-3-haiku-20240307-v1:0",
+  "prompt": "Compare Security Group e NACL na AWS: estado, associação, regras e exemplo. Responda em português em até 200 palavras. Cite fontes somente se disponíveis no contexto.",
+  "temperature": 0,
+  "maxTokens": 400,
+  "mcp_resultado": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "isError": false,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"content\":{\"result\":[{\"rank_order\":1,\"title\":\"Amazon VPC FAQs\",\"context\":\"### What are the differences between security groups in a VPC and network ACLs in a VPC?\\n\\nSecurity groups in a VPC specify which traffic is allowed to or from an Amazon EC2 instance. Network ACLs operate at the subnet level and evaluate traffic entering and exiting a subnet. Network ACLs can be used to set both Allow and Deny rules. Network ACLs do not filter traffic between instances in the same subnet. In addition, network ACLs perform stateless filtering while security groups perform stateful filtering\",\"url\":\"https://aws.amazon.com/vpc/faqs/\"},{\"rank_order\":2,\"title\":\"Security in your VPC on Amazon MWAA Serverless\",\"context\":\"## Network access control lists (ACLs)\\n\\nA network access control list (ACL) can manage (by allow or deny rules) inbound and outbound traffic at the *subnet* level. An ACL is stateless, which means that inbound and outbound rules must be specified separately and explicitly. It is used to specify the types of network traffic that are allowed in or out from the instances in a VPC network.\\n\\nEvery Amazon VPC has a default ACL that allows all inbound and outbound traffic. You can edit the default ACL rules, or create a custom ACL and attach it to your subnets. A subnet can only have one ACL attached to it at any time, but one ACL can be attached to multiple subnets.\\n\\n### (Recommended) Example ACLs\\n\\nThe following example shows the *inbound* and *outbound* ACL rules that can be used for an Amazon VPC with *public routing* (Amazon VPC network has access to the internet) or *private routing* (Amazon VPC network doees not have access to the internet).\\n\\n| Rule number | Type | Protocol | Port range | Source | Allow or deny |\\n| --- | --- | --- | --- | --- | --- |\\n| 100 | All IPv4 traffic | All | All | 0.0.0.0/0 | Allow |\\n| * | All IPv4 traffic | All | All | 0.0.0.0/0 | Deny |\",\"url\":\"https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/networking-security.html\"}]}}"
+        }
+      ]
+    }
+  },
+  "sem_mcp": {
+    "resposta": {
+      "ResponseMetadata": {
+        "RequestId": "4ad2bccb-e38b-4d3f-9036-f14065086b45",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+          "content-type": "application/json;charset=UTF-8",
+          "content-length": "1492",
+          "date": "Sun, 15 Nov 2026 17:52:12 GMT",
+          "x-amz-id-2": "4ad2bccb-e38b-4d3f-9036-f14065086b45",
+          "x-amz-request-id": "4ad2bccb-e38b-4d3f-9036-f14065086b45",
+          "x-amzn-requestid": "4ad2bccb-e38b-4d3f-9036-f14065086b45"
+        },
+        "RetryAttempts": 0
+      },
+      "output": {
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "text": "Segundo a documentação oficial da AWS, Security Group (SG) e Network Access Control List (NACL) são ambos usados para controlar o tráfego de rede entre uma instância EC2 e a rede virtual.\n\n**Diferenças principais:**\n\n*   **Estado**: A Security Group é um recurso que pode ser associado a uma instância EC2, enquanto a NACL é um recurso que define regras de acesso à rede virtual.\n*   **Associação**: A Security Group é associada à instância EC2, enquanto a NACL é associada à rede virtual.\n*   **Regras**: A Security Group define regras de acesso para a instância EC2, enquanto a NACL define regras de acesso para a rede virtual.\n\n**Exemplo:**\n\n*   Uma instância EC2 com uma Security Group associada pode ter regras que permitam o tráfego de rede para o IP 192.168.2.1 e bloquear o tráfego para o IP 192.168.2.2.\n*   Uma NACL associada à rede virtual pode ter regras que permitam o tráfego de rede para o IP 192.168.2.1 e bloquear o tráfego para o IP 192.168.2.2.\n\nFonte: [AWS Documentation - Security Groups](https://docs.aws.amazon.com/pt_br/latest/ec2/userguide/network-security-groups.html) e [AWS Documentation - Network Access Control Lists (NACLs)](https://docs.aws.amazon.com/pt_br/latest/ec2/userguide/network-security-groups.html#network-security-groups-nacls)"
+            }
+          ]
+        }
+      },
+      "stopReason": "end_turn",
+      "usage": {
+        "inputTokens": 86,
+        "outputTokens": 353,
+        "totalTokens": 439
+      },
+      "metrics": {
+        "latencyMs": 32431
+      }
+    },
+    "latencia_s": 32.459
+  },
+  "com_mcp": {
+    "resposta": {
+      "ResponseMetadata": {
+        "RequestId": "34ff6634-8fff-41f9-8847-7e535585737b",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+          "content-type": "application/json;charset=UTF-8",
+          "content-length": "1195",
+          "date": "Sun, 15 Nov 2026 17:52:40 GMT",
+          "x-amz-id-2": "34ff6634-8fff-41f9-8847-7e535585737b",
+          "x-amz-request-id": "34ff6634-8fff-41f9-8847-7e535585737b",
+          "x-amzn-requestid": "34ff6634-8fff-41f9-8847-7e535585737b"
+        },
+        "RetryAttempts": 0
+      },
+      "output": {
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "text": "**Segurança em VPC na AWS**\n\n**Segurança Group (SG)**\n\n*   Estado: Permanente, não pode ser removido\n*   Associação: Instalado em uma instância EC2\n*   Regras: Permite ou bloqueia o tráfego entre a instância e a rede\n*   Exemplo: \n    | Protocolo | Porta | Origem | Destino | Permissão |\n    | --- | --- | --- | --- | --- |\n    | TCP | 80 | 0.0.0.0/0 | 192.168.1.100 | Permitir |\n    | UDP | 53 | 192.168.1.100 | 0.0.0.0/0 | Bloquear |\n\n**Network Access Control List (NACL)**\n\n*   Estado: Temporário, pode ser removido\n*   Associação: Instalado em uma sub rede\n*   Regras: Permite ou bloqueia o tráfego entre a sub rede e a rede\n*   Exemplo: \n    | Tipo | Protocolo | Porta | Origem | Destino | Permissão |\n    | --- | --- | --- | --- | --- | --- |\n    | Inbound | All | All | 0.0.0.0/0 | Permitir |\n    | Outbound | All | All | 0.0.0.0/0 | Bloquear |\n\nFonte: [AWS Knowledge MCP](https://docs.aws.amazon.com/mwaa/latest/mwaa-serverless-userguide/networking-security.html)"
+            }
+          ]
+        }
+      },
+      "stopReason": "end_turn",
+      "usage": {
+        "inputTokens": 626,
+        "outputTokens": 343,
+        "totalTokens": 969
+      },
+      "metrics": {
+        "latencyMs": 28028
+      }
+    },
+    "latencia_s": 28.037
+  }
+}

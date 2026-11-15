@@ -1,114 +1,64 @@
 # GenAI na Automação de Serviços AWS
 
-Projeto prático de automação em nuvem com IA generativa, utilizando Floci e Ollama como ambiente local simulado da AWS.
+Laboratório local de triagem de relatórios agrícolas e diagnóstico operacional. Floci emula as APIs AWS; Ollama executa llama3.2 na triagem e qwen2.5:3b no agente. Há dois usos de IA: classificação de documentos e agente com escolha de ferramentas.
 
-## Etapa 0 - Ambiente local
+## Preparar no Windows
 
-### Componentes utilizados
+Requisitos: Docker Desktop ativo, Python, AWS CLI, Git. Para o MCP, uv/uvx e cliente compatível. Na raiz do repositório:
 
-- Docker Desktop 29.9.3
-- Python 3.14.10
-- AWS CLI 2.40.3
-- Floci, simulando serviços AWS localmente
-- Ollama com o modelo local `llama3.2`
-
-### Arquitetura inicial
-
-```text
-AWS CLI -> Floci (localhost:4566) -> Bedrock Runtime simulado -> Ollama (llama3.2)
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/preparar.ps1
 ```
 
-## Objetivo
+O script inicia contêineres, baixa llama3.2 e qwen2.5:3b, configura o perfil LOCAL floci, cria .venv, instala dependências, valida IaC e provisiona a stack e recursos auxiliares. Se os contêineres já estão ativos nesta máquina, use `-SemDocker`. Não execute duas cópias do Compose nas mesmas portas. A implantação verifica a conta 000000000000. Chaves geradas ficam em ~/.aws, nunca no repositório. O AMI fictício usado no provisionador só funciona na emulação.
 
-Experimentar automação de triagem de relatórios agrícolas com IA generativa, usando APIs AWS simuladas pelo Floci e inferência local pelo Ollama. O projeto também exercita documentação via MCP, IaC, observabilidade e controles de segurança.
+## Validar e demonstrar
 
-## Execução resumida
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe scripts/testar_iam.py
+.\.venv\Scripts\python.exe scripts/validar_local.py
+.\.venv\Scripts\python.exe scripts/demonstrar_agente.py --recusar
+```
 
-1. Inicie o ambiente local:
+O último comando é um teste de recusa automática. Para demonstração interativa, execute sem `--recusar`: o operador deve conferir o grupo, capacidade e justificativa e digitar `s` apenas se aprovar aquela ação. O agente só aceita aumento de uma unidade, CPU >80% em três períodos consecutivos recentes e no máximo uma alteração por execução. Falha na auditoria impede escrita. O modelo escolhe ferramentas; respostas incorretas podem ser bloqueadas. A execução tem limite de seis rodadas.
 
-   ```powershell
-   docker compose up -d
-   docker compose exec ollama ollama pull llama3.2
-   ```
-
-2. Ative o perfil AWS local previamente configurado para o Floci:
-
-   ```powershell
-   $env:AWS_PROFILE = "floci"
-   ```
-
-3. Configure a função `triagem` com `TABELA=triagem` e o evento S3 descrito em [lambda/notificacao-s3.json](./lambda/notificacao-s3.json). Envie os relatórios de teste ao bucket `relatorios-campo` e confira os resultados na tabela `triagem`.
-4. Com a Launch Configuration `triagem-launch-v1` e o ASG `triagem-asg` criados no Floci, execute o agente sem aprovação:
-
-   ```powershell
-   .\.venv\Scripts\python.exe .\agent\triagem_agente.py --grupo triagem-asg --fila alertas-triagem --limite 10
-   ```
-
-   No teste, o agente recomendou escalar de `1` para `2`, mas não alterou a capacidade sem aprovação.
-5. Após revisar e aprovar explicitamente a recomendação, execute novamente com a opção de aprovação:
-
-   ```powershell
-   .\.venv\Scripts\python.exe .\agent\triagem_agente.py --grupo triagem-asg --fila alertas-triagem --limite 10 --aprovar-escalonamento
-   ```
-
-   Neste teste, o agente alterou a capacidade desejada para `2`, que foi confirmada no ASG.
-6. Ao terminar os testes, encerre os serviços locais com `docker compose down`.
+`validar_local.py` envia três relatórios legítimos e um com tentativa de injeção, mede tokens/latência e salva resultados em docs/evidencias. São objetos de teste com nomes únicos. `testar_iam.py` cria e remove apenas sua identidade e objetos temporários. Para inventário: definir `$env:AWS_PROFILE='floci'` e executar `scripts/inventario.py`.
 
 ## Arquitetura
 
 ```mermaid
 flowchart LR
-    S3["S3: relatorios-campo"] -->|ObjectCreated| Lambda["Lambda Python: triagem"]
-    Lambda -->|converse| Bedrock["Bedrock Runtime no Floci"]
-    Bedrock -->|proxy de inferência| Ollama["Ollama: llama3.2"]
-    Ollama -->|JSON de resumo e urgência| Lambda
-    Lambda -->|PutItem| DynamoDB["DynamoDB: triagem"]
-
-    CloudWatch["CloudWatch: métrica e alarme"] --> SNS["SNS: alertas-triagem"]
-    SNS --> SQS["SQS: alertas-triagem"]
-    SQS --> Agente["Agente Python"]
-    Agente -->|consulta métricas e atividades| CloudWatch
-    Agente -->|propõe escala| Pessoa["Aprovação humana"]
-    Pessoa -->|aprovação explícita| Agente
-    Agente -->|somente após aprovação| ASG["ASG: triagem-asg"]
+  S3[Relatório S3] -->|ObjectCreated| L[Lambda com role mínima]
+  L --> B[Bedrock Runtime emulado]
+  B --> O[Ollama: llama3.2 / Qwen]
+  O --> L
+  L --> D[DynamoDB triagem]
+  CW[CPU simulada no CloudWatch] --> AL[Alarme 3 períodos acima de 80%]
+  AL --> SNS[SNS] --> SQS[SQS alertas]
+  CW --> A[Agente com usuário IAM próprio]
+  A <-->|tool use| B
+  A --> LOG[CloudWatch Logs]
+  A --> H[Confirmação da ação]
+  H -->|aprovada e revalidada| ASG[Auto Scaling Group]
 ```
 
-## Etapas do projeto
+A fila recebe alertas. O agente é iniciado manualmente e consulta métricas/ASG; não há consumidor automático da SQS nesta versão. A infraestrutura básica está em iac/vpc.yaml; scripts/provisionar.py configura Lambda, IAM, eventos, ASG, alarme e notificações.
 
-- **Etapa 0 — Ambiente local:** Floci, Ollama e Docker Compose.
-- **Etapa 1 — Fundamentos:** conceitos de GenAI, classificação de serviços e MCP para consultar documentação.
-- **Etapa 2 — Prompts:** diário preparado, com conteúdo ainda pendente.
-- **Etapa 3 — Infraestrutura:** especificação e template CloudFormation para VPC, EC2, S3 e DynamoDB.
-- **Etapa 4 — Triagem:** evento S3 aciona Lambda, que usa Bedrock Runtime/Ollama e grava resultados na tabela; os testes de relatórios estão registrados em [docs/etapa-04-automacao.md](./docs/etapa-04-automacao.md).
-- **Etapa 5 — Escalabilidade e alertas:** Launch Configuration `triagem-launch-v1`, ASG `triagem-asg` (1–4 instâncias), alarme acionado pela métrica de valor `25` com limite `10`, entrega SNS/SQS e escala de `1` para `2` somente após aprovação humana. As evidências locais estão em [docs/etapa-05-evidencias.md](./docs/etapa-05-evidencias.md).
-- **Etapa 6 — Análise:** custos, segurança, LGPD, sustentabilidade e limitações, em [docs/etapa-06-analise.md](./docs/etapa-06-analise.md).
+## Documentação da entrega
 
-## MCP e documentação
+- [Fundamentos](docs/etapa-01-fundamentos.md), [diário reconstruído](docs/etapa-02-diario-prompts.md).
+- [Especificação IaC](docs/etapa-03-especificacao.md) e [revisão crítica](docs/etapa-03-revisao.md).
+- [Triagem](docs/etapa-04-automacao.md), [agente](docs/etapa-05-especificacao.md), [evidências](docs/etapa-05-evidencias.md).
+- [Custos, segurança e sustentabilidade](docs/etapa-06-analise.md), [roteiro de 10 minutos](docs/roteiro-apresentacao.md).
+- [Origem das evidências](docs/evidencias/README.md) e [estado da entrega](docs/estado-entrega.md).
 
-O arquivo `.mcp.json` configura o `awsDocs` como servidor local via `stdio`/`uvx` e o `awsKnowledge` via HTTP. Eles apoiam a consulta à documentação; não substituem o Floci nem comprovam comportamento de serviços AWS reais.
+## MCP
 
-## Validações locais já realizadas
+`.mcp.json` atende clientes que usam mcpServers; `.vscode/mcp.json` atende o VS Code. Ambos definem awsDocs via stdio/uvx e awsKnowledge via HTTP. Reinicie o editor após instalar uv para atualizar PATH. As capturas históricas mostram descoberta de cinco ferramentas por servidor. MCP consulta documentação; não substitui testes do código.
 
-Lint do template de infraestrutura:
+## Limites e encerramento
 
-```powershell
-.\.venv\Scripts\cfn-lint.exe .\iac\vpc.yaml
-```
+Os testes são locais, sem deploy AWS real. A versão do Floci exigiu exceção isolada `logs:PutLogEvents` em `*`, documentada em policies/agente-floci-compat.json; remover na AWS e validar o escopo por stream. O modelo pode gerar conclusões erradas mesmo com ferramentas. Regex de injeção é uma defesa parcial, não imunidade.
 
-Verificação sintática do inventário:
-
-```powershell
-.\.venv\Scripts\python.exe -m py_compile .\scripts\inventario.py
-```
-
-Verificação sintática da Lambda e do agente:
-
-```powershell
-.\.venv\Scripts\python.exe -c "from pathlib import Path; files=[r'lambda\app.py', r'agent\triagem_agente.py']; [compile(Path(name).read_text(encoding='utf-8'), name, 'exec') for name in files]; print('Sintaxe Python: OK')"
-```
-
-Também foram feitas verificações sintáticas e testes com serviços simulados para a Lambda e o agente. Os testes do agente cobriram a decisão segura quando a resposta é inválida, a ausência de escala sem aprovação e a chamada de escala somente com a aprovação explícita.
-
-## Segurança e ambiente
-
-Este é um ambiente local Floci/Ollama; não representa um deploy em AWS real. Não versione credenciais nem inclua valores secretos no código. Use o perfil local configurado para o Floci.
+Após apresentar, `docker compose down` encerra os serviços principais. Recursos auxiliares Docker criados pelo Floci e dados persistidos podem continuar existindo; conferir `docker ps -a`. Não apagar volumes/dados antes de preservar as evidências. Nenhuma limpeza destrutiva foi executada nesta revisão.

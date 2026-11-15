@@ -1,0 +1,6 @@
+services:
+  floci:
+    environment:
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+      FLOCI_SERVICES_BEDROCK_RUNTIME_PROXY_MODEL_MAPPING: "qwen2.5:3b=qwen2.5:3b"

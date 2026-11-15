@@ -46,3 +46,9 @@ Os uploads de `relatorio-baixa.txt`, `relatorio-media.txt` e `relatorio-alta.txt
 ## Ambiente
 
 O processamento foi executado no ambiente local Floci/Ollama. O código não contém credenciais, e não foi feito deploy em uma conta AWS real.
+
+## Validação adicional de 15/11/2026
+
+O teste scripts/validar_local.py enviou objetos únicos ao S3 e aguardou resultados no DynamoDB. Os quatro cenários passaram: alta, baixa, média e injeção. Foram registrados tokens e latência em [validacao-local.json](evidencias/validacao-local.json). O relatório injetado foi marcado alta com suspeita_injecao e revisao_humana. Essa quarentena é uma decisão conservadora, não uma classificação médica/agronômica garantida.
+
+A detecção de frases maliciosas complementa a instrução de sistema e a validação JSON. Não foi medida uma taxa geral de resistência a ataques. Modelos adicionais e variante de saúde não foram executados; são extensões opcionais.
