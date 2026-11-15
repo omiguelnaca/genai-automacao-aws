@@ -1,0 +1,15 @@
+# Dados locais gerados pelo Floci
+data/
+
+# Ambiente Python
+.venv/
+__pycache__/
+*.pyc
+
+# Configurações e segredos locais
+.env
+.env.*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
