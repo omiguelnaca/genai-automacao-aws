@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC para automacao de triagem de relatorios
+
+Parameters:
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: ID da AMI para a instancia EC2
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permite somente HTTP de entrada
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  WebInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: t3.micro
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref WebSecurityGroup
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: relatorios-campo
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+  TriageTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: triagem
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: arquivo
+          AttributeType: S
+      KeySchema:
+        - AttributeName: arquivo
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: GenAI-Automacao
+
+Outputs:
+  VpcId:
+    Description: ID da VPC
+    Value: !Ref VPC
+
+  InstancePublicIp:
+    Description: Endereco IP publico da instancia EC2
+    Value: !GetAtt WebInstance.PublicIp
+
+  ReportBucketName:
+    Description: Nome do bucket S3 de relatorios
+    Value: !Ref ReportsBucket
+
+  TriageTableArn:
+    Description: ARN da tabela DynamoDB de triagem
+    Value: !GetAtt TriageTable.Arn
